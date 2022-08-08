@@ -48,14 +48,17 @@ app.get('/login', function(req, res) {
 
   // your application requests authorization
   var scope = 'user-read-private user-read-email';
-  res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
-      response_type: 'code',
-      client_id: client_id,
-      scope: scope,
-      redirect_uri: redirect_uri,
-      state: state
-    }));
+  console.log(redirect_uri)
+  const params = new URLSearchParams([
+    ['response_type', 'code'],
+    ['client_id', client_id],
+    ['scope', scope],
+    ['redirect_uri', redirect_uri],
+    ['state', state]
+  ]);
+  res.redirect(
+    'https://accounts.spotify.com/authorize?' + params.toString()
+    );
 });
 
 app.get('/callback', function(req, res) {
@@ -68,10 +71,12 @@ app.get('/callback', function(req, res) {
   var storedState = req.cookies ? req.cookies[stateKey] : null;
 
   if (state === null || state !== storedState) {
-    res.redirect('/#' +
-      querystring.stringify({
-        error: 'state_mismatch'
-      }));
+    const params = new URLSearchParams([
+      ['error', 'state_mismatch']
+    ]);
+    res.redirect(
+      '/#' + params.toString()
+      );
   } else {
     res.clearCookie(stateKey);
     const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
@@ -106,16 +111,20 @@ app.get('/callback', function(req, res) {
         });
 
         // we can also pass the token to the browser to make requests from there
-        res.redirect('/#' +
-          querystring.stringify({
-            access_token: access_token,
-            refresh_token: refresh_token
-          }));
+        const params = new URLSearchParams([
+          ['access_token', access_token],
+          ['refresh_token', refresh_token]
+        ]);
+        res.redirect(
+          '/#' + params.toString()
+          );
       } else {
-        res.redirect('/#' +
-          querystring.stringify({
-            error: 'invalid_token'
-          }));
+        const params = new URLSearchParams([
+          ['error', 'invalid_token']
+        ]);
+        res.redirect(
+          '/#' + params.toString()
+          );
       }
     });
   }
