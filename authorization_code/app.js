@@ -47,8 +47,7 @@ app.get('/login', function(req, res) {
   res.cookie(stateKey, state);
 
   // your application requests authorization
-  var scope = 'user-read-private user-read-email';
-  console.log(redirect_uri)
+  var scope = 'user-read-private user-read-email playlist-read-private';
   const params = new URLSearchParams([
     ['response_type', 'code'],
     ['client_id', client_id],
