@@ -175,5 +175,22 @@ app.get('/refresh_token', function(req, res) {
   });
 });
 
+
+//Request to get the user's profile information
+app.get('/me', (req, res) => {
+  const access_token = req.query.access_token;
+  var authOptions = {
+    url: 'https://api.spotify.com/v1/me',
+    headers: { 'Authorization': 'Bearer ' + access_token},
+  };
+  request.get(authOptions, (error, response, body) => {
+    if (!error && response.statusCode === 200) {
+      res.send(
+        body
+      );
+    }
+  })
+});
+
 console.log('Listening on 8888');
 app.listen(8888);

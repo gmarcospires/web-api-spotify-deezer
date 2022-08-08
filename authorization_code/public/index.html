@@ -103,13 +103,13 @@
             });
 
             $.ajax({
-                url: 'https://api.spotify.com/v1/me',
-                headers: {
-                  'Authorization': 'Bearer ' + access_token
+                url: '/me',
+                data: {
+                 access_token
                 },
                 success: function(response) {
-                  userProfilePlaceholder.innerHTML = userProfileTemplate(response);
-
+                  jsonResponse = JSON.parse(response);
+                  userProfilePlaceholder.innerHTML = userProfileTemplate(jsonResponse);
                   $('#login').hide();
                   $('#loggedin').show();
                 }
