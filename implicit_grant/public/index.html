@@ -132,7 +132,6 @@
           document.getElementById('login-button').addEventListener('click', function() {
 
             var client_id = process.env.CLIENT_ID; // Your client id
-            console.log(client_id, process.env.CLIENT_ID)
             var redirect_uri = process.env.REDIRECT_URI; // Your redirect uri
 
             var state = generateRandomString(16);

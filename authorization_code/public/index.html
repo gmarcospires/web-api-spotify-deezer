@@ -93,7 +93,7 @@
             error = params.error;
 
         if (error) {
-          alert('There was an error during the authentication');
+          alert('There was an error during the authentication: ' + error);
         } else {
           if (access_token) {
             // render oauth info
