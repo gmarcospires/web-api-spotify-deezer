@@ -245,5 +245,35 @@ app.post('/playlists', (req, res) => {
   });
 });
 
+//Request to get details playlist
+app.post('/playlist', (req, res) => {
+  const access_token = req.body.access_token;
+  const playlist_id = req.body.id;
+  var authOptions = {
+    headers: { 'Authorization': 'Bearer ' + access_token},
+    method: 'GET'
+  };
+ const url = 'https://api.spotify.com/v1/playlists/' + playlist_id;
+  fetch(url, authOptions)
+  .then((response) => {
+    if( response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    res.send(
+      err.message
+    )
+  });
+});
+
 console.log('Listening on 8888');
 app.listen(8888);
