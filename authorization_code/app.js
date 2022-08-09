@@ -8,9 +8,10 @@
  */
 
 var express = require('express'); // Express web server framework
-var request = require('request'); // "Request" library
 var cors = require('cors');
+const fetch = require('node-fetch');
 var cookieParser = require('cookie-parser');
+const { response } = require('express');
 require('dotenv').config(); // Secret environment variables that must be set
 
 var client_id = process.env.CLIENT_ID; // Your client id
@@ -101,115 +102,167 @@ app.get('/callback', function(req, res) {
   } else {
     res.clearCookie(stateKey);
     const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
+    params = new URLSearchParams([
+      ['code', code],
+      ['redirect_uri', redirect_uri],
+      ['grant_type', 'authorization_code'] 
+    ]);
     var authOptions = {
-      url: 'https://accounts.spotify.com/api/token',
-      form: {
-        code: code,
-        redirect_uri: redirect_uri,
-        grant_type: 'authorization_code'
-      },
+      body: params,
       headers: {
-        'Authorization': 'Basic ' + (buffer)
+        'Authorization': 'Basic ' + (buffer),
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
       },
-      json: true
+      method: 'POST'
     };
 
-    request.post(authOptions, function(error, response, body) {
-      if (!error && response.statusCode === 200) {
-
-        var access_token = body.access_token,
-            refresh_token = body.refresh_token;
-
-        var options = {
-          url: 'https://api.spotify.com/v1/me',
-          headers: { 'Authorization': 'Bearer ' + access_token },
-          json: true
-        };
-
-        // use the access token to access the Spotify Web API
-        request.get(options, function(error, response, body) {
-          console.log("access token - ok");
-        });
-
-        // we can also pass the token to the browser to make requests from there
-        const params = new URLSearchParams([
-          ['access_token', access_token],
-          ['refresh_token', refresh_token]
-        ]);
-        res.redirect(
-          '/#' + params.toString()
-          );
-      } else {
-        const params = new URLSearchParams([
-          ['error', 'invalid_token']
-        ]);
-        res.redirect(
-          '/#' + params.toString()
-          );
+    fetch('https://accounts.spotify.com/api/token', authOptions)
+    .then((response) => {
+      if( response.status === 200){
+        return response.json();
       }
+      else{
+        throw new Error( response.status + ': ' + response.statusText );
+      }
+    })
+    .then((jsonResponse) => {
+      var access_token = jsonResponse.access_token;
+      var refresh_token = jsonResponse.refresh_token;
+      const params = new URLSearchParams([
+        ['access_token', access_token],
+        ['refresh_token', refresh_token]
+      ]);
+      res.redirect(
+        '/#' + params.toString()
+        );
+    })
+    .catch( (err) => {
+      console.log(err);
+      const params = new URLSearchParams([
+        ['error', err || 'invalid_token']
+      ]);
+      res.redirect(
+        '/#' + params.toString()
+        );
     });
   }
 });
 
 app.get('/refresh_token', function(req, res) {
-
+  const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
   // requesting access token from refresh token
   var refresh_token = req.query.refresh_token;
-  const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
+  params = new URLSearchParams([
+    ['refresh_token', refresh_token],
+    ['grant_type', 'refresh_token'] 
+  ]);
   var authOptions = {
-    url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': 'Basic ' + (buffer) },
-    form: {
-      grant_type: 'refresh_token',
-      refresh_token: refresh_token
+    body: params,
+    headers: {
+      'Authorization': 'Basic ' + (buffer),
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
     },
-    json: true
+    method: 'POST'
   };
 
-  request.post(authOptions, function(error, response, body) {
-    if (!error && response.statusCode === 200) {
-      var access_token = body.access_token;
-      res.send({
-        'access_token': access_token
-      });
+  fetch('https://accounts.spotify.com/api/token', authOptions)
+  .then((response) => {
+    if( response.status === 200){
+      return response.json();
     }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  })
+  .then((jsonResponse) => {
+    var access_token = jsonResponse.access_token;
+    res.send({
+      access_token
+    });
+  })
+  .catch( (err) => {
+    console.log(err);
+    const params = new URLSearchParams([
+      ['error', err || 'invalid_token']
+    ]);
+    res.redirect(
+      '/#' + params.toString()
+      );
   });
-});
 
+});
+/* 
+TODO
+ route for logout
+*/
 
 //Request to get the user's profile information
 app.post('/me', (req, res) => {
   const access_token = req.body.access_token;
   var authOptions = {
-    url: 'https://api.spotify.com/v1/me',
-    headers: { 'Authorization': 'Bearer ' + access_token},
+    headers:{ 
+      'Authorization': 'Bearer ' + access_token,
+      'limit': '50'
+    },
+    method: 'GET'
   };
-  request.get(authOptions, (error, response, body) => {
-    if (!error && response.statusCode === 200) {
-      res.send(
-        body
-      );
+  fetch('https://api.spotify.com/v1/me', authOptions)
+  .then((response) => {
+    if( response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
     }
   })
+  .then( (jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    const params = new URLSearchParams([
+      ['error', err || 'invalid']
+    ]);
+    res.redirect(
+      '/#' + params.toString()
+      );
+  });
 });
 
 
 //Request to get the user's profile information
-app.get('/playlist', (req, res) => {
-  const access_token = req.query.access_token;
+app.post('/playlist', (req, res) => {
+  const access_token = req.body.access_token;
   var authOptions = {
-    url: 'https://api.spotify.com/v1/me/playlists',
     headers: { 'Authorization': 'Bearer ' + access_token},
   };
-  request.get(authOptions, (error, response, body) => {
-    console.log(body);
-    if (!error && response.statusCode === 200) {
-      res.send(
-        body
-      );
+
+  fetch('https://api.spotify.com/v1/me/playlists', authOptions)
+  .then((response) => {
+    if( response.status === 200){
+      return response.json();
     }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
   })
+  .catch( (err) => {
+    console.log(err);
+    const params = new URLSearchParams([
+      ['error', err || 'invalid']
+    ]);
+    res.redirect(
+      '/#' + params.toString()
+      );
+  });
 });
+
 
 console.log('Listening on 8888');
 app.listen(8888);

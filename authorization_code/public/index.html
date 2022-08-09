@@ -109,7 +109,7 @@
                 },
                 method: 'POST',
                 success: function(response) {
-                  jsonResponse = JSON.parse(response);
+                  jsonResponse = response;
                   userProfilePlaceholder.innerHTML = userProfileTemplate(jsonResponse);
                   $('#login').hide();
                   $('#loggedin').show();
