@@ -107,6 +107,7 @@
                 data: {
                  access_token
                 },
+                method: 'POST',
                 success: function(response) {
                   jsonResponse = JSON.parse(response);
                   userProfilePlaceholder.innerHTML = userProfileTemplate(jsonResponse);

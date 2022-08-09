@@ -10,7 +10,6 @@
 var express = require('express'); // Express web server framework
 var request = require('request'); // "Request" library
 var cors = require('cors');
-var querystring = require('querystring');
 var cookieParser = require('cookie-parser');
 require('dotenv').config(); // Secret environment variables that must be set
 
@@ -39,7 +38,9 @@ var app = express();
 
 app.use(express.static(__dirname + '/public'))
    .use(cors())
-   .use(cookieParser());
+   .use(cookieParser())
+   .use(express.json())
+   .use(express.urlencoded({ extended: true }));
 
 app.get('/login', function(req, res) {
 
@@ -127,7 +128,7 @@ app.get('/callback', function(req, res) {
 
         // use the access token to access the Spotify Web API
         request.get(options, function(error, response, body) {
-          console.log(body);
+          console.log("access token - ok");
         });
 
         // we can also pass the token to the browser to make requests from there
@@ -177,13 +178,31 @@ app.get('/refresh_token', function(req, res) {
 
 
 //Request to get the user's profile information
-app.get('/me', (req, res) => {
-  const access_token = req.query.access_token;
+app.post('/me', (req, res) => {
+  const access_token = req.body.access_token;
   var authOptions = {
     url: 'https://api.spotify.com/v1/me',
     headers: { 'Authorization': 'Bearer ' + access_token},
   };
   request.get(authOptions, (error, response, body) => {
+    if (!error && response.statusCode === 200) {
+      res.send(
+        body
+      );
+    }
+  })
+});
+
+
+//Request to get the user's profile information
+app.get('/playlist', (req, res) => {
+  const access_token = req.query.access_token;
+  var authOptions = {
+    url: 'https://api.spotify.com/v1/me/playlists',
+    headers: { 'Authorization': 'Bearer ' + access_token},
+  };
+  request.get(authOptions, (error, response, body) => {
+    console.log(body);
     if (!error && response.statusCode === 200) {
       res.send(
         body
