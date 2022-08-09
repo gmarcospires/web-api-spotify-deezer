@@ -13,6 +13,12 @@ const fetch = require('node-fetch');
 var cookieParser = require('cookie-parser');
 require('dotenv').config(); // Secret environment variables that must be set
 
+
+var corsOptions = {
+  origin: 'https://accounts.spotify.com/',
+  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+}
+
 var client_id = process.env.CLIENT_ID; // Your client id
 var client_secret = process.env.CLIENT_SECRET; // Your secret
 var redirect_uri = process.env.REDIRECT_URI; // Your redirect uri
@@ -44,7 +50,7 @@ app.use(express.static(__dirname + '/public'))
 app.get('/login', function(req, res) {
 
   var state = generateRandomString(16);
-  res.cookie(stateKey, state);
+  res.cookie(stateKey, state, { maxAge: 3600});
 
   // your application requests authorization
   //var scope = 'user-read-private user-read-email playlist-read-private';
@@ -81,6 +87,12 @@ app.get('/login', function(req, res) {
     );
 });
 
+app.options('/exit', cors(corsOptions));
+app.get('/exit', (req, res) => {
+  res.clearCookie(stateKey);
+  res.redirect('https://accounts.spotify.com/logout')
+})
+
 app.get('/callback', function(req, res) {
 
   // your application requests refresh and access tokens
@@ -90,9 +102,10 @@ app.get('/callback', function(req, res) {
   var state = req.query.state || null;
   var storedState = req.cookies ? req.cookies[stateKey] : null;
 
-  if (state === null || state !== storedState) {
-    throw new Error('state mismatch');
-  } else {
+  // if (state === null || state !== storedState) {
+  //   throw new Error('state mismatch');
+  // } else {
+    {
     res.clearCookie(stateKey);
     const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
     params = new URLSearchParams([
