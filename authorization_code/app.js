@@ -91,12 +91,7 @@ app.get('/callback', function(req, res) {
   var storedState = req.cookies ? req.cookies[stateKey] : null;
 
   if (state === null || state !== storedState) {
-    const params = new URLSearchParams([
-      ['error', 'state_mismatch']
-    ]);
-    res.redirect(
-      '/#' + params.toString()
-      );
+    throw new Error('state mismatch');
   } else {
     res.clearCookie(stateKey);
     const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
@@ -136,12 +131,9 @@ app.get('/callback', function(req, res) {
     })
     .catch( (err) => {
       console.log(err);
-      const params = new URLSearchParams([
-        ['error', err || 'invalid_token']
-      ]);
-      res.redirect(
-        '/#' + params.toString()
-        );
+      res.send(
+        err.message
+      )
     });
   }
 });
@@ -180,12 +172,9 @@ app.get('/refresh_token', function(req, res) {
   })
   .catch( (err) => {
     console.log(err);
-    const params = new URLSearchParams([
-      ['error', err || 'invalid_token']
-    ]);
-    res.redirect(
-      '/#' + params.toString()
-      );
+    res.send(
+      err.message
+    )
   });
 
 });
@@ -220,21 +209,19 @@ app.post('/me', (req, res) => {
   })
   .catch( (err) => {
     console.log(err);
-    const params = new URLSearchParams([
-      ['error', err || 'invalid']
-    ]);
-    res.redirect(
-      '/#' + params.toString()
-      );
+    res.send(
+      err.message
+    )
   });
 });
 
 
-//Request to get the user's profile information
-app.post('/playlist', (req, res) => {
+//Request to get playlists of the user
+app.post('/playlists', (req, res) => {
   const access_token = req.body.access_token;
   var authOptions = {
     headers: { 'Authorization': 'Bearer ' + access_token},
+    method: 'GET'
   };
 
   fetch('https://api.spotify.com/v1/me/playlists', authOptions)
@@ -252,15 +239,11 @@ app.post('/playlist', (req, res) => {
   })
   .catch( (err) => {
     console.log(err);
-    const params = new URLSearchParams([
-      ['error', err || 'invalid']
-    ]);
-    res.redirect(
-      '/#' + params.toString()
-      );
+    res.send(
+      err.message
+    )
   });
 });
-
 
 console.log('Listening on 8888');
 app.listen(8888);
