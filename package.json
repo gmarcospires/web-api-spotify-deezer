@@ -9,5 +9,18 @@
     "dotenv": "^16.0.1",
     "express": "~4.16.0",
     "node-fetch": "2"
+  },
+  "scripts": {
+    "start": "nodemon ./authorization_code/app.js"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.19",
+    "prettier": "^2.7.1",
+    "pretty-quick": "^3.1.3"
   }
 }
