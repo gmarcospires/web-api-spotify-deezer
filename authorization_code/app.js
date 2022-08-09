@@ -11,13 +11,11 @@ var express = require('express'); // Express web server framework
 var cors = require('cors');
 const fetch = require('node-fetch');
 var cookieParser = require('cookie-parser');
-const { response } = require('express');
 require('dotenv').config(); // Secret environment variables that must be set
 
 var client_id = process.env.CLIENT_ID; // Your client id
 var client_secret = process.env.CLIENT_SECRET; // Your secret
 var redirect_uri = process.env.REDIRECT_URI; // Your redirect uri
-
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
