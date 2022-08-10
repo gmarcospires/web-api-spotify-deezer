@@ -216,7 +216,6 @@ app.post('/me', (req, res) => {
   });
 });
 
-
 //Request to get playlists of the current user
 app.post('/playlists', (req, res) => {
   const access_token = req.body.access_token;
