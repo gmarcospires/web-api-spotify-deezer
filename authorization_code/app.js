@@ -13,12 +13,6 @@ const fetch = require('node-fetch');
 var cookieParser = require('cookie-parser');
 require('dotenv').config(); // Secret environment variables that must be set
 
-
-var corsOptions = {
-  origin: 'https://accounts.spotify.com/',
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
-
 var client_id = process.env.CLIENT_ID; // Your client id
 var client_secret = process.env.CLIENT_SECRET; // Your secret
 var redirect_uri = process.env.REDIRECT_URI; // Your redirect uri
@@ -46,11 +40,10 @@ app.use(express.static(__dirname + '/public'))
    .use(cookieParser())
    .use(express.json())
    .use(express.urlencoded({ extended: true }));
-
+   
 app.get('/login', function(req, res) {
-
   var state = generateRandomString(16);
-  res.cookie(stateKey, state, { maxAge: 3600});
+  res.cookie(stateKey, state, { maxAge: 24 * 60 * 60 * 1000 , httpOnly: true});
 
   // your application requests authorization
   //var scope = 'user-read-private user-read-email playlist-read-private';
@@ -87,25 +80,24 @@ app.get('/login', function(req, res) {
     );
 });
 
-app.options('/exit', cors(corsOptions));
-app.get('/exit', (req, res) => {
-  res.clearCookie(stateKey);
-  res.redirect('https://accounts.spotify.com/logout')
+app.get('/logout', (req, res) => {
+  req.session = null;
+  res.clearCookie();
+  res.redirect('/');
 })
 
 app.get('/callback', function(req, res) {
-
   // your application requests refresh and access tokens
   // after checking the state parameter
 
   var code = req.query.code || null;
   var state = req.query.state || null;
   var storedState = req.cookies ? req.cookies[stateKey] : null;
-
-  // if (state === null || state !== storedState) {
-  //   throw new Error('state mismatch');
-  // } else {
-    {
+    if (storedState === null) {
+      res.clearCookie(stateKey);
+      res.redirect('/');
+    } 
+    else {
     res.clearCookie(stateKey);
     const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
     params = new URLSearchParams([
@@ -191,10 +183,6 @@ app.get('/refresh_token', function(req, res) {
   });
 
 });
-/* 
-TODO
- route for logout
-*/
 
 //Request to get the user's profile information
 app.post('/me', (req, res) => {
@@ -229,7 +217,7 @@ app.post('/me', (req, res) => {
 });
 
 
-//Request to get playlists of the user
+//Request to get playlists of the current user
 app.post('/playlists', (req, res) => {
   const access_token = req.body.access_token;
   var authOptions = {

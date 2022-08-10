@@ -28,7 +28,7 @@
         <div id="oauth">
         </div>
         <button class="btn btn-default" id="obtain-new-token">Obtain new token using the refresh token</button>
-        <button class="btn btn-default" id="sair">Sair</button>
+        <button class="btn btn-default" id="logout">Sair</button>
       </div>
     </div>
 
@@ -137,15 +137,16 @@
             });
           }, false);
 
-          document.getElementById('sair').addEventListener('click', function() {
+          document.getElementById('logout').addEventListener('click', function() {
+            access_token = null;
             $.ajax({
-              url: '/exit',
-              data: {
-              }
-            }).done(function(data) {
-              
-            });
-          }, false);
+              url: '/logout'
+            }).done( () =>{
+              const url = 'https://www.spotify.com/logout/';                                                                                                                                                                                                                                                                              
+              const spotifyLogoutWindow = window.open(url, 'Spotify Logout', 'width=700,height=500,top=40,left=40');                                                                                                
+              setTimeout(() => {spotifyLogoutWindow.close();window.location.href = '/';}, 1000);
+            })
+          });
         }
       })();
     </script>
