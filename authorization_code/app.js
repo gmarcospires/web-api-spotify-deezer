@@ -321,9 +321,52 @@ app.post('/playlist/tracks', (req, res) => {
   });
 });
 
+//Request to create a playlist
+app.post('/add/playlist', (req, res) => {
+  const access_token = req.body.access_token;
+  const name = req.body.name;
+  const public = req.body.is_public || true;
+  const collaborative = req.body.is_collaborative || false;
+  const description = req.body.description || '';
 
+  var authOptions = {
+    headers: {
+      'Authorization': 'Bearer ' + access_token,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+    body: JSON.stringify({
+      name: name,
+      public: public,
+      collaborative: collaborative,
+      description: description
+    })
+  };
+//  const url = 'https://api.spotify.com/v1/me/playlists';
+ const url = 'https://api.spotify.com/v1/users/' + req.body.user_id + '/playlists';
+ 
+  fetch(url, authOptions)
+  .then((response) => {
+    if( response.status === 201 || response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    res.send(
+      err.message
+    )
+  });
+});
 
-// TODO: try to get track with a external_ids->isrc
+// TODO: try to get track with a external_ids->isrc, errors return json with error message
 
 console.log('Listening on 8888');
 app.listen(8888);
