@@ -216,15 +216,21 @@ app.post('/me', (req, res) => {
   });
 });
 
+//PLAYLIST REQUESTS
 //Request to get playlists of the current user
 app.post('/playlists', (req, res) => {
   const access_token = req.body.access_token;
+  const offset = req.body.offset;
+  const limit = req.body.limit;
+
+  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
+
   var authOptions = {
     headers: { 'Authorization': 'Bearer ' + access_token},
     method: 'GET'
   };
 
-  fetch('https://api.spotify.com/v1/me/playlists', authOptions)
+  fetch('https://api.spotify.com/v1/me/playlists' + params, authOptions)
   .then((response) => {
     if( response.status === 200){
       return response.json();
@@ -249,11 +255,16 @@ app.post('/playlists', (req, res) => {
 app.post('/playlist', (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.id;
+  const offset = req.body.offset;
+  const limit = req.body.limit;
+
+  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
+
   var authOptions = {
     headers: { 'Authorization': 'Bearer ' + access_token},
     method: 'GET'
   };
- const url = 'https://api.spotify.com/v1/playlists/' + playlist_id;
+ const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + params;
   fetch(url, authOptions)
   .then((response) => {
     if( response.status === 200){
@@ -274,6 +285,45 @@ app.post('/playlist', (req, res) => {
     )
   });
 });
+
+
+//Request to get tracks of a playlist
+app.post('/playlist/tracks', (req, res) => {
+  const access_token = req.body.access_token;
+  const playlist_id = req.body.id;
+  const offset = req.body.offset;
+  const limit = req.body.limit;
+
+  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
+  var authOptions = {
+    headers: { 'Authorization': 'Bearer ' + access_token},
+    method: 'GET'
+  };
+ const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks' + params;
+  fetch(url, authOptions)
+  .then((response) => {
+    if( response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    res.send(
+      err.message
+    )
+  });
+});
+
+
+
+// TODO: try to get track with a external_ids->isrc
 
 console.log('Listening on 8888');
 app.listen(8888);
