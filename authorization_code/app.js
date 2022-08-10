@@ -324,6 +324,7 @@ app.post('/playlist/tracks', (req, res) => {
 //Request to create a playlist
 app.post('/add/playlist', (req, res) => {
   const access_token = req.body.access_token;
+  const user_id = req.body.user_id;
   const name = req.body.name;
   const public = req.body.is_public || true;
   const collaborative = req.body.is_collaborative || false;
@@ -343,7 +344,48 @@ app.post('/add/playlist', (req, res) => {
     })
   };
 //  const url = 'https://api.spotify.com/v1/me/playlists';
- const url = 'https://api.spotify.com/v1/users/' + req.body.user_id + '/playlists';
+ const url = 'https://api.spotify.com/v1/users/' + user_id + '/playlists';
+ 
+  fetch(url, authOptions)
+  .then((response) => {
+    if( response.status === 201 || response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    res.send(
+      err.message
+    )
+  });
+});
+
+//Request to add items to playlist
+//URI type -> https://developer.spotify.com/documentation/web-api/#spotify-uris-and-ids
+app.post('/add/playlist/items', (req, res) => {
+  const access_token = req.body.access_token;
+  const playlist_id = req.body.playlist_id;
+  const uris = req.body.uris;
+
+  var authOptions = {
+    headers: {
+      'Authorization': 'Bearer ' + access_token,
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+    body: JSON.stringify({
+      uris: [uris]
+    }
+    )
+  };
+ const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks';
  
   fetch(url, authOptions)
   .then((response) => {
