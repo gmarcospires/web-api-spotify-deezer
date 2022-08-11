@@ -286,7 +286,6 @@ app.post('/playlist', (req, res) => {
   });
 });
 
-
 //Request to get tracks of a playlist
 app.post('/playlist/tracks', (req, res) => {
   const access_token = req.body.access_token;
@@ -408,6 +407,52 @@ app.post('/add/playlist/items', (req, res) => {
   });
 });
 
+//Search
+//"track: easy on me artist:adele isrc:USSM12105970"
+app.post('/search', (req, res) => {
+  const access_token = req.body.access_token;
+  const query = req.body.query;//htmlencode?
+  const type = req.body.type;
+  const offset = req.body.offset || 0;
+  const limit = req.body.limit || 20;
+
+  const params = new URLSearchParams(
+    {
+      q: query,
+      type: type,
+      limit: limit,
+      offset: offset
+    }
+  );
+  var authOptions = {
+    headers: {
+      'Authorization': 'Bearer ' + access_token,
+      'Content-Type': 'application/json'
+    },
+    method: 'GET'
+  };
+ const url = 'https://api.spotify.com/v1/search?' + params.toString();
+ console.log(url)
+  fetch(url, authOptions)
+  .then((response) => {
+    if( response.status === 201 || response.status === 200){
+      return response.json();
+    }
+    else{
+      throw new Error( response.status + ': ' + response.statusText );
+    }
+  }).then((jsonResponse) =>{
+    res.send(
+      jsonResponse
+    );
+  })
+  .catch( (err) => {
+    console.log(err);
+    res.send(
+      err.message
+    )
+  });
+});
 // TODO: try to get track with a external_ids->isrc, errors return json with error message
 
 console.log('Listening on 8888');
