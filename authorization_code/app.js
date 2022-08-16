@@ -1,29 +1,22 @@
-/**
- * This is an example of a basic node.js script that performs
- * the Authorization Code oAuth2 flow to authenticate against
- * the Spotify Accounts.
- *
- * For more information, read
- * https://developer.spotify.com/web-api/authorization-guide/#authorization_code_flow
- */
+var express = require("express"); // Express web server framework
+var cors = require("cors");
+const fetch = require("node-fetch");
+var cookieParser = require("cookie-parser");
+require("dotenv").config(); // Secret environment variables that must be set
 
-var express = require('express'); // Express web server framework
-var cors = require('cors');
-const fetch = require('node-fetch');
-var cookieParser = require('cookie-parser');
-require('dotenv').config(); // Secret environment variables that must be set
+var client_id = process.env.CLIENT_ID;
+var client_secret = process.env.CLIENT_SECRET;
+var redirect_uri = process.env.REDIRECT_URI;
 
-var client_id = process.env.CLIENT_ID; // Your client id
-var client_secret = process.env.CLIENT_SECRET; // Your secret
-var redirect_uri = process.env.REDIRECT_URI; // Your redirect uri
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
  * @return {string} The generated string
  */
-var generateRandomString = function(length) {
-  var text = '';
-  var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+var generateRandomString = function (length) {
+  var text = "";
+  var possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
   for (var i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
@@ -31,429 +24,469 @@ var generateRandomString = function(length) {
   return text;
 };
 
-var stateKey = 'spotify_auth_state';
+var stateKey = "spotify_auth_state";
+//Application requests authorization
+var scope = [
+  "ugc-image-upload",
+  "user-read-playback-state",
+  "user-modify-playback-state",
+  "user-read-currently-playing",
+  "streaming",
+  "app-remote-control",
+  "user-read-email",
+  "user-read-private",
+  "playlist-read-collaborative",
+  "playlist-modify-public",
+  "playlist-read-private",
+  "playlist-modify-private",
+  "user-library-modify",
+  "user-library-read",
+  "user-top-read",
+  "user-read-playback-position",
+  "user-read-recently-played",
+  "user-follow-read",
+  "user-follow-modify",
+];
 
 var app = express();
+app
+  .use(express.static(__dirname + "/public"))
+  .use(cors())
+  .use(cookieParser())
+  .use(express.json())
+  .use(
+    express.urlencoded({
+      extended: true,
+    })
+  );
 
-app.use(express.static(__dirname + '/public'))
-   .use(cors())
-   .use(cookieParser())
-   .use(express.json())
-   .use(express.urlencoded({ extended: true }));
-   
-app.get('/login', function(req, res) {
+app.get("/login", function (req, res) {
   var state = generateRandomString(16);
-  res.cookie(stateKey, state, { maxAge: 24 * 60 * 60 * 1000 , httpOnly: true});
+  res.cookie(stateKey, state, {
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+  });
 
-  // your application requests authorization
-  //var scope = 'user-read-private user-read-email playlist-read-private';
-  var scope = [
-    'ugc-image-upload',
-    'user-read-playback-state',
-    'user-modify-playback-state',
-    'user-read-currently-playing',
-    'streaming',
-    'app-remote-control',
-    'user-read-email',
-    'user-read-private',
-    'playlist-read-collaborative',
-    'playlist-modify-public',
-    'playlist-read-private',
-    'playlist-modify-private',
-    'user-library-modify',
-    'user-library-read',
-    'user-top-read',
-    'user-read-playback-position',
-    'user-read-recently-played',
-    'user-follow-read',
-    'user-follow-modify'
-  ];
   const params = new URLSearchParams([
-    ['response_type', 'code'],
-    ['client_id', client_id],
-    ['scope', scope],
-    ['redirect_uri', redirect_uri],
-    ['state', state]
+    ["response_type", "code"],
+    ["client_id", client_id],
+    ["scope", scope],
+    ["redirect_uri", redirect_uri],
+    ["state", state],
   ]);
-  res.redirect(
-    'https://accounts.spotify.com/authorize?' + params.toString()
-    );
+  res.redirect("https://accounts.spotify.com/authorize?" + params.toString());
 });
 
-app.get('/logout', (req, res) => {
+app.get("/logout", (req, res) => {
   req.session = null;
   res.clearCookie();
-  res.redirect('/');
-})
+  res.redirect("/");
+});
 
-app.get('/callback', function(req, res) {
+app.get("/callback", function (req, res) {
   // your application requests refresh and access tokens
   // after checking the state parameter
-
   var code = req.query.code || null;
   var state = req.query.state || null;
   var storedState = req.cookies ? req.cookies[stateKey] : null;
-    if (storedState === null) {
-      res.clearCookie(stateKey);
-      res.redirect('/');
-    } 
-    else {
+
+  if (storedState === null) {
     res.clearCookie(stateKey);
-    const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
+    res.redirect("/");
+  } else {
+    res.clearCookie(stateKey);
+
+    const buffer = new Buffer.from(
+      client_id + ":" + client_secret,
+      "utf8"
+    ).toString("base64");
     params = new URLSearchParams([
-      ['code', code],
-      ['redirect_uri', redirect_uri],
-      ['grant_type', 'authorization_code'] 
+      ["code", code],
+      ["redirect_uri", redirect_uri],
+      ["grant_type", "authorization_code"],
     ]);
-    var authOptions = {
+
+    const authOptions = {
       body: params,
       headers: {
-        'Authorization': 'Basic ' + (buffer),
-        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        Authorization: "Basic " + buffer,
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
       },
-      method: 'POST'
+      method: "POST",
     };
 
-    fetch('https://accounts.spotify.com/api/token', authOptions)
+    fetch("https://accounts.spotify.com/api/token", authOptions)
+      .then((response) => {
+        if (response.status === 200) {
+          return response.json();
+        } else {
+          throw new Error(
+            JSON.stringify({
+              status: response.status,
+              statusText: response.statusText,
+            })
+          );
+        }
+      })
+      .then((jsonResponse) => {
+        var access_token = jsonResponse.access_token;
+        var refresh_token = jsonResponse.refresh_token;
+
+        const params = new URLSearchParams([
+          ["access_token", access_token],
+          ["refresh_token", refresh_token],
+        ]);
+        res.redirect("/#" + params.toString());
+      })
+      .catch((err) => {
+        console.log(err);
+        res.send(err.message);
+      });
+  }
+});
+
+app.get("/refresh_token", function (req, res) {
+  // requesting access token from refresh token
+  const buffer = new Buffer.from(
+    client_id + ":" + client_secret,
+    "utf8"
+  ).toString("base64");
+  var refresh_token = req.query.refresh_token;
+
+  const params = new URLSearchParams([
+    ["refresh_token", refresh_token],
+    ["grant_type", "refresh_token"],
+  ]);
+  var options = {
+    body: params,
+    headers: {
+      Authorization: "Basic " + buffer,
+      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+    },
+    method: "POST",
+  };
+
+  fetch("https://accounts.spotify.com/api/token", options)
     .then((response) => {
-      if( response.status === 200){
+      if (response.status === 200) {
         return response.json();
-      }
-      else{
-        throw new Error( response.status + ': ' + response.statusText );
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
       }
     })
     .then((jsonResponse) => {
       var access_token = jsonResponse.access_token;
-      var refresh_token = jsonResponse.refresh_token;
-      const params = new URLSearchParams([
-        ['access_token', access_token],
-        ['refresh_token', refresh_token]
-      ]);
-      res.redirect(
-        '/#' + params.toString()
-        );
+      res.send({
+        access_token,
+      });
     })
-    .catch( (err) => {
+    .catch((err) => {
       console.log(err);
-      res.send(
-        err.message
-      )
+      res.send(err.message);
     });
-  }
-});
-
-app.get('/refresh_token', function(req, res) {
-  const buffer = new Buffer.from(client_id + ':' + client_secret, 'utf8').toString('base64');
-  // requesting access token from refresh token
-  var refresh_token = req.query.refresh_token;
-  params = new URLSearchParams([
-    ['refresh_token', refresh_token],
-    ['grant_type', 'refresh_token'] 
-  ]);
-  var authOptions = {
-    body: params,
-    headers: {
-      'Authorization': 'Basic ' + (buffer),
-      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-    },
-    method: 'POST'
-  };
-
-  fetch('https://accounts.spotify.com/api/token', authOptions)
-  .then((response) => {
-    if( response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  })
-  .then((jsonResponse) => {
-    var access_token = jsonResponse.access_token;
-    res.send({
-      access_token
-    });
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
-
 });
 
 //Request to get the user's profile information
-app.post('/me', (req, res) => {
+app.post("/me", (req, res) => {
   const access_token = req.body.access_token;
-  var authOptions = {
-    headers:{ 
-      'Authorization': 'Bearer ' + access_token,
-      'limit': '50'
+  const authOptions = {
+    headers: {
+      Authorization: "Bearer " + access_token,
+      limit: "50",
     },
-    method: 'GET'
+    method: "GET",
   };
-  fetch('https://api.spotify.com/v1/me', authOptions)
-  .then((response) => {
-    if( response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  })
-  .then( (jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+  fetch("https://api.spotify.com/v1/me", authOptions)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //PLAYLIST REQUESTS
 //Request to get playlists of the current user
-app.post('/playlists', (req, res) => {
+app.post("/playlists", (req, res) => {
   const access_token = req.body.access_token;
-  const offset = req.body.offset;
-  const limit = req.body.limit;
+  const offset = req.body.offset || 0;
+  const limit = req.body.limit || 20;
 
-  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
-
-  var authOptions = {
-    headers: { 'Authorization': 'Bearer ' + access_token},
-    method: 'GET'
+  const options = {
+    headers: {
+      Authorization: "Bearer " + access_token,
+    },
+    method: "GET",
   };
+  const params = new URLSearchParams([
+    ["offset", offset],
+    ["limit", limit],
+  ]);
 
-  fetch('https://api.spotify.com/v1/me/playlists' + params, authOptions)
-  .then((response) => {
-    if( response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+  const url = "https://api.spotify.com/v1/me/playlists?" + params.toString();
+  fetch(url, options)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //Request to get details playlist
-app.post('/playlist', (req, res) => {
+app.post("/playlist", (req, res) => {
   const access_token = req.body.access_token;
-  const playlist_id = req.body.id;
-  const offset = req.body.offset;
-  const limit = req.body.limit;
+  const playlist_id = req.body.playlist_id;
+  const offset = req.body.offset || 0;
+  const limit = req.body.limit || 20;
 
-  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
-
-  var authOptions = {
-    headers: { 'Authorization': 'Bearer ' + access_token},
-    method: 'GET'
+  const options = {
+    headers: {
+      Authorization: "Bearer " + access_token,
+    },
+    method: "GET",
   };
- const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + params;
-  fetch(url, authOptions)
-  .then((response) => {
-    if( response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+  const params = new URLSearchParams([
+    ["offset", offset],
+    ["limit", limit],
+  ]);
+
+  const url =
+    "https://api.spotify.com/v1/playlists/" +
+    playlist_id +
+    "?" +
+    params.toString();
+  fetch(url, options)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //Request to get tracks of a playlist
-app.post('/playlist/tracks', (req, res) => {
+app.post("/playlist/tracks", (req, res) => {
   const access_token = req.body.access_token;
-  const playlist_id = req.body.id;
-  const offset = req.body.offset;
-  const limit = req.body.limit;
+  const playlist_id = req.body.playlist_id;
+  const offset = req.body.offset || 0;
+  const limit = req.body.limit || 20;
 
-  const params = "?" + (offset? "&offset=" + offset : "") + (limit? "&limit=" + limit : "");
-  var authOptions = {
-    headers: { 'Authorization': 'Bearer ' + access_token},
-    method: 'GET'
+  const options = {
+    headers: {
+      Authorization: "Bearer " + access_token,
+    },
+    method: "GET",
   };
- const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks' + params;
-  fetch(url, authOptions)
-  .then((response) => {
-    if( response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+  const params = new URLSearchParams([
+    ["offset", offset],
+    ["limit", limit],
+  ]);
+
+  const url =
+    "https://api.spotify.com/v1/playlists/" +
+    playlist_id +
+    "/tracks?" +
+    params.toString();
+  fetch(url, options)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //Request to create a playlist
-app.post('/add/playlist', (req, res) => {
+app.post("/add/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const user_id = req.body.user_id;
-  const name = req.body.name;
+  const name = req.body.playlist_name;
   const public = req.body.is_public || true;
   const collaborative = req.body.is_collaborative || false;
-  const description = req.body.description || '';
+  const description = req.body.playlist_description || "";
 
-  var authOptions = {
+  const options = {
     headers: {
-      'Authorization': 'Bearer ' + access_token,
-      'Content-Type': 'application/json',
+      Authorization: "Bearer " + access_token,
+      "Content-Type": "application/json",
     },
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({
       name: name,
       public: public,
       collaborative: collaborative,
-      description: description
-    })
+      description: description,
+    }),
   };
-//  const url = 'https://api.spotify.com/v1/me/playlists';
- const url = 'https://api.spotify.com/v1/users/' + user_id + '/playlists';
- 
-  fetch(url, authOptions)
-  .then((response) => {
-    if( response.status === 201 || response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+
+  const url = "https://api.spotify.com/v1/users/" + user_id + "/playlists";
+  fetch(url, options)
+    .then((response) => {
+      if (response.status === 201 || response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //Request to add items to playlist
 //URI type -> https://developer.spotify.com/documentation/web-api/#spotify-uris-and-ids
-app.post('/add/playlist/items', (req, res) => {
+app.post("/add/playlist/items", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const uris = req.body.uris;
 
-  var authOptions = {
+  const options = {
     headers: {
-      'Authorization': 'Bearer ' + access_token,
-      'Content-Type': 'application/json',
+      Authorization: "Bearer " + access_token,
+      "Content-Type": "application/json",
     },
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({
-      uris: [uris]
-    }
-    )
+      uris: [uris],
+    }),
   };
- const url = 'https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks';
- 
+  const url = "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks";
+
   fetch(url, authOptions)
-  .then((response) => {
-    if( response.status === 201 || response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
+    .then((response) => {
+      if (response.status === 201 || response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
 });
 
 //Search
 //"track: easy on me artist:adele isrc:USSM12105970"
-app.post('/search', (req, res) => {
+app.post("/search", (req, res) => {
   const access_token = req.body.access_token;
-  const query = req.body.query;//htmlencode?
+  const query = req.body.query;
   const type = req.body.type;
   const offset = req.body.offset || 0;
   const limit = req.body.limit || 20;
 
-  const params = new URLSearchParams(
-    {
-      q: query,
-      type: type,
-      limit: limit,
-      offset: offset
-    }
-  );
+  const params = new URLSearchParams({
+    q: query,
+    type: type,
+    limit: limit,
+    offset: offset,
+  });
   var authOptions = {
     headers: {
-      'Authorization': 'Bearer ' + access_token,
-      'Content-Type': 'application/json'
+      Authorization: "Bearer " + access_token,
+      "Content-Type": "application/json",
     },
-    method: 'GET'
+    method: "GET",
   };
- const url = 'https://api.spotify.com/v1/search?' + params.toString();
- console.log(url)
-  fetch(url, authOptions)
-  .then((response) => {
-    if( response.status === 201 || response.status === 200){
-      return response.json();
-    }
-    else{
-      throw new Error( response.status + ': ' + response.statusText );
-    }
-  }).then((jsonResponse) =>{
-    res.send(
-      jsonResponse
-    );
-  })
-  .catch( (err) => {
-    console.log(err);
-    res.send(
-      err.message
-    )
-  });
-});
-// TODO: try to get track with a external_ids->isrc, errors return json with error message
 
-console.log('Listening on 8888');
+  const url = "https://api.spotify.com/v1/search?" + params.toString();
+  fetch(url, authOptions)
+    .then((response) => {
+      if (response.status === 201 || response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
+});
+// TODO: errors return json with error message
+
+console.log("Listening on 8888");
 app.listen(8888);
