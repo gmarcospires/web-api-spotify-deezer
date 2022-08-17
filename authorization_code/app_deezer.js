@@ -19,33 +19,18 @@ var generateRandomString = function (length) {
   return text;
 };
 
-var client_id = process.env.CLIENT_ID;
-var client_secret = process.env.CLIENT_SECRET;
+var app_id = process.env.APP_ID;
+var secret = process.env.SECRET;
 var redirect_uri = process.env.REDIRECT_URI;
-var stateKey = "spotify_auth_state";
 //Application requests authorization
-var scope = [
-  "ugc-image-upload",
-  "user-read-playback-state",
-  "user-modify-playback-state",
-  "user-read-currently-playing",
-  "streaming",
-  "app-remote-control",
-  "user-read-email",
-  "user-read-private",
-  "playlist-read-collaborative",
-  "playlist-modify-public",
-  "playlist-read-private",
-  "playlist-modify-private",
-  "user-library-modify",
-  "user-library-read",
-  "user-top-read",
-  "user-read-playback-position",
-  "user-read-recently-played",
-  "user-follow-read",
-  "user-follow-modify",
+var permissions = [
+  "basic_access",
+  "manage_library",
+  "delete_library",
+  "listening_history",
+  "offline_access",
 ];
-
+var stateKey = "deezer_auth_state";
 var app = express();
 app
   .use(express.static(__dirname + "/public"))
@@ -59,20 +44,21 @@ app
   );
 
 app.get("/login", function (req, res) {
-  let state = generateRandomString(16);
+  var state = generateRandomString(16);
   res.cookie(stateKey, state, {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
   });
 
   const params = new URLSearchParams([
-    ["response_type", "code"],
-    ["client_id", client_id],
-    ["scope", scope],
+    ["app_id", app_id],
+    ["perms", permissions],
     ["redirect_uri", redirect_uri],
     ["state", state],
   ]);
-  res.redirect("https://accounts.spotify.com/authorize?" + params.toString());
+  res.redirect(
+    "https://connect.deezer.com/oauth/auth.php?" + params.toString()
+  );
 });
 
 app.get("/logout", (req, res) => {
@@ -84,34 +70,26 @@ app.get("/logout", (req, res) => {
 app.get("/callback", function (req, res) {
   // your application requests refresh and access tokens
   // after checking the state parameter
-  var code = req.query.code || null;
-  var state = req.query.state || null;
-  var storedState = req.cookies ? req.cookies[stateKey] : null;
+  let code = req.query.code || null;
+  let state = req.query.state || null;
+  let storedState = req.cookies ? req.cookies[stateKey] : null;
+
+  const authOptions = {
+    method: "GET",
+  };
   if (state === null || state !== storedState) {
     const params = new URLSearchParams([["error", "state_mismatch"]]);
     res.redirect("/#" + params.toString());
   } else {
-    res.clearCookie(stateKey);
-
-    const buffer = new Buffer.from(
-      client_id + ":" + client_secret,
-      "utf8"
-    ).toString("base64");
     const params = new URLSearchParams([
+      ["app_id", app_id],
+      ["secret", secret],
       ["code", code],
-      ["redirect_uri", redirect_uri],
-      ["grant_type", "authorization_code"],
+      ["output", "json"],
     ]);
-    const authOptions = {
-      body: params,
-      headers: {
-        Authorization: "Basic " + buffer,
-        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-      },
-      method: "POST",
-    };
-
-    fetch("https://accounts.spotify.com/api/token", authOptions)
+    const url =
+      "https://connect.deezer.com/oauth/access_token.php?" + params.toString();
+    fetch(url, authOptions)
       .then((response) => {
         if (response.status === 200) {
           return response.json();
@@ -127,10 +105,12 @@ app.get("/callback", function (req, res) {
       .then((jsonResponse) => {
         var access_token = jsonResponse.access_token;
         var refresh_token = jsonResponse.refresh_token;
+        var expires_token = jsonResponse.expires;
 
         const params = new URLSearchParams([
           ["access_token", access_token],
           ["refresh_token", refresh_token],
+          ["code", code],
         ]);
         res.redirect("/#" + params.toString());
       })
@@ -141,64 +121,18 @@ app.get("/callback", function (req, res) {
   }
 });
 
-app.get("/refresh_token", function (req, res) {
-  // requesting access token from refresh token
-  const buffer = new Buffer.from(
-    client_id + ":" + client_secret,
-    "utf8"
-  ).toString("base64");
-  var refresh_token = req.query.refresh_token;
-
-  const params = new URLSearchParams([
-    ["refresh_token", refresh_token],
-    ["grant_type", "refresh_token"],
-  ]);
-  var options = {
-    body: params,
-    headers: {
-      Authorization: "Basic " + buffer,
-      "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-    },
-    method: "POST",
-  };
-
-  fetch("https://accounts.spotify.com/api/token", options)
-    .then((response) => {
-      if (response.status === 200) {
-        return response.json();
-      } else {
-        throw new Error(
-          JSON.stringify({
-            status: response.status,
-            statusText: response.statusText,
-          })
-        );
-      }
-    })
-    .then((jsonResponse) => {
-      var access_token = jsonResponse.access_token;
-      res.send({
-        access_token,
-      });
-    })
-    .catch((err) => {
-      console.log(err);
-      res.send(err.message);
-    });
-});
+app.get("/refresh_token", function (req, res) {});
 
 //Request to get the user's profile information
 app.post("/me", (req, res) => {
   const access_token = req.body.access_token;
   const authOptions = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-      limit: "50",
-    },
     method: "GET",
   };
+  const params = new URLSearchParams([["access_token", access_token]]);
 
-  fetch("https://api.spotify.com/v1/me", authOptions)
+  const url = "https://api.deezer.com/user/me?" + params.toString();
+  fetch(url, authOptions)
     .then((response) => {
       if (response.status === 200) {
         return response.json();
@@ -220,7 +154,7 @@ app.post("/me", (req, res) => {
     });
 });
 
-//PLAYLIST REQUESTS
+//PLAYLIST
 //Request to get playlists of the current user
 app.post("/playlists", (req, res) => {
   const access_token = req.body.access_token;
@@ -228,17 +162,15 @@ app.post("/playlists", (req, res) => {
   const limit = req.body.limit || 20;
 
   const options = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-    },
     method: "GET",
   };
   const params = new URLSearchParams([
     ["offset", offset],
     ["limit", limit],
+    ["access_token", access_token],
   ]);
 
-  const url = "https://api.spotify.com/v1/me/playlists?" + params.toString();
+  const url = "https://api.deezer.com/user/me/playlists?" + params.toString();
   fetch(url, options)
     .then((response) => {
       if (response.status === 200) {
@@ -262,6 +194,7 @@ app.post("/playlists", (req, res) => {
 });
 
 //Request to get details playlist
+//TODO: Add Description, public, collaborative
 app.post("/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
@@ -269,21 +202,16 @@ app.post("/playlist", (req, res) => {
   const limit = req.body.limit || 20;
 
   const options = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-    },
     method: "GET",
   };
   const params = new URLSearchParams([
     ["offset", offset],
     ["limit", limit],
+    ["access_token", access_token],
   ]);
 
   const url =
-    "https://api.spotify.com/v1/playlists/" +
-    playlist_id +
-    "?" +
-    params.toString();
+    `https://api.deezer.com/playlist/${playlist_id}?` + params.toString();
   fetch(url, options)
     .then((response) => {
       if (response.status === 200) {
@@ -314,20 +242,16 @@ app.post("/playlist/tracks", (req, res) => {
   const limit = req.body.limit || 20;
 
   const options = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-    },
     method: "GET",
   };
   const params = new URLSearchParams([
     ["offset", offset],
     ["limit", limit],
+    ["access_token", access_token],
   ]);
 
   const url =
-    "https://api.spotify.com/v1/playlists/" +
-    playlist_id +
-    "/tracks?" +
+    `https://api.deezer.com/playlist/${playlist_id}/tracks?` +
     params.toString();
   fetch(url, options)
     .then((response) => {
@@ -355,26 +279,24 @@ app.post("/playlist/tracks", (req, res) => {
 app.post("/add/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const user_id = req.body.user_id;
-  const name = req.body.playlist_name;
+  const title = req.body.playlist_name;
   const public = req.body.is_public || true;
   const collaborative = req.body.is_collaborative || false;
   const description = req.body.playlist_description || "";
 
   const options = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-      "Content-Type": "application/json",
-    },
     method: "POST",
-    body: JSON.stringify({
-      name: name,
-      public: public,
-      collaborative: collaborative,
-      description: description,
-    }),
   };
+  const params = new URLSearchParams([
+    ["access_token", access_token],
+    ["title", title],
+    ["public", public],
+    ["collaborative", collaborative],
+    ["description", description],
+  ]);
 
-  const url = "https://api.spotify.com/v1/users/" + user_id + "/playlists";
+  const url =
+    `https://api.deezer.com/user/${user_id}/playlists?` + params.toString();
   fetch(url, options)
     .then((response) => {
       if (response.status === 201 || response.status === 200) {
@@ -402,20 +324,61 @@ app.post("/add/playlist", (req, res) => {
 app.post("/add/playlist/items", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
-  const uris = req.body.uris;
+  const songs = req.body.songs; //1522223672, 1174603092
 
   const options = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-      "Content-Type": "application/json",
-    },
     method: "POST",
-    body: JSON.stringify({
-      uris: [uris],
-    }),
   };
-  const url = "https://api.spotify.com/v1/playlists/" + playlist_id + "/tracks";
+  const params = new URLSearchParams([
+    ["access_token", access_token],
+    ["songs", [songs]],
+  ]);
 
+  const url =
+    `https://api.deezer.com/playlist/${playlist_id}/tracks?` +
+    params.toString();
+  fetch(url, options)
+    .then((response) => {
+      if (response.status === 201 || response.status === 200) {
+        return response.json();
+      } else {
+        throw new Error(
+          JSON.stringify({
+            status: response.status,
+            statusText: response.statusText,
+          })
+        );
+      }
+    })
+    .then((jsonResponse) => {
+      res.send(jsonResponse);
+    })
+    .catch((err) => {
+      console.log(err);
+      res.send(err.message);
+    });
+});
+
+//SEARCH
+//https://developers.deezer.com/api/search
+app.post("/search", (req, res) => {
+  const access_token = req.body.access_token;
+  const query = req.body.query; // track:'easy on me' artist:'adele'
+  const type = req.body.type; //artist, album, track, playlist, radio, podcast, episode
+  const offset = req.body.offset || 0;
+  const limit = req.body.limit || 20;
+
+  const params = new URLSearchParams({
+    q: query,
+    type: type,
+    limit: limit,
+    offset: offset,
+  });
+  var authOptions = {
+    method: "GET",
+  };
+
+  const url = `https://api.deezer.com/search/${type}?` + params.toString();
   fetch(url, authOptions)
     .then((response) => {
       if (response.status === 201 || response.status === 200) {
@@ -438,33 +401,27 @@ app.post("/add/playlist/items", (req, res) => {
     });
 });
 
-//Search
-//"track: easy on me artist:adele isrc:USSM12105970"
-app.post("/search", (req, res) => {
+//TRACKS
+//Request to get track info
+app.post("/track", (req, res) => {
   const access_token = req.body.access_token;
-  const query = req.body.query;
-  const type = req.body.type;
+  const track_id = req.body.track_id;
   const offset = req.body.offset || 0;
   const limit = req.body.limit || 20;
 
-  const params = new URLSearchParams({
-    q: query,
-    type: type,
-    limit: limit,
-    offset: offset,
-  });
-  const authOptions = {
-    headers: {
-      Authorization: "Bearer " + access_token,
-      "Content-Type": "application/json",
-    },
+  const options = {
     method: "GET",
   };
+  const params = new URLSearchParams([
+    ["offset", offset],
+    ["limit", limit],
+    ["access_token", access_token],
+  ]);
 
-  const url = "https://api.spotify.com/v1/search?" + params.toString();
-  fetch(url, authOptions)
+  const url = `https://api.deezer.com/track/${track_id}?` + params.toString();
+  fetch(url, options)
     .then((response) => {
-      if (response.status === 201 || response.status === 200) {
+      if (response.status === 200) {
         return response.json();
       } else {
         throw new Error(
