@@ -1,27 +1,9 @@
-var express = require("express"); // Express web server framework
-var cors = require("cors");
-const fetch = require("node-fetch");
-var cookieParser = require("cookie-parser");
-require("dotenv").config(); // Secret environment variables that must be set
-/**
- * Generates a random string containing numbers and letters
- * @param  {number} length The length of the string
- * @return {string} The generated string
- */
-var generateRandomString = function (length) {
-  var text = "";
-  var possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-  for (var i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-};
+const express = require('express');
+const router = express.Router(); // Secret environment variables that must be set
 
 var app_id = process.env.APP_ID;
 var secret = process.env.SECRET;
-var redirect_uri = process.env.REDIRECT_URI;
+var redirect_uri = process.env.REDIRECT_URI_DEEZER;
 //Application requests authorization
 var permissions = [
   "basic_access",
@@ -31,19 +13,8 @@ var permissions = [
   "offline_access",
 ];
 var stateKey = "deezer_auth_state";
-var app = express();
-app
-  .use(express.static(__dirname + "/public"))
-  .use(cors())
-  .use(cookieParser())
-  .use(express.json())
-  .use(
-    express.urlencoded({
-      extended: true,
-    })
-  );
 
-app.get("/login", function (req, res) {
+router.get("/login", function (req, res) {
   var state = generateRandomString(16);
   res.cookie(stateKey, state, {
     maxAge: 24 * 60 * 60 * 1000,
@@ -61,13 +32,13 @@ app.get("/login", function (req, res) {
   );
 });
 
-app.get("/logout", (req, res) => {
+router.get("/logout", (req, res) => {
   req.session = null;
   res.clearCookie();
   res.redirect("/");
 });
 
-app.get("/callback", function (req, res) {
+router.get("/callback", function (req, res) {
   // your application requests refresh and access tokens
   // after checking the state parameter
   let code = req.query.code || null;
@@ -121,10 +92,10 @@ app.get("/callback", function (req, res) {
   }
 });
 
-app.get("/refresh_token", function (req, res) {});
+router.get("/refresh_token", function (req, res) {});
 
 //Request to get the user's profile information
-app.post("/me", (req, res) => {
+router.post("/me", (req, res) => {
   const access_token = req.body.access_token;
   const authOptions = {
     method: "GET",
@@ -156,7 +127,7 @@ app.post("/me", (req, res) => {
 
 //PLAYLIST
 //Request to get playlists of the current user
-app.post("/playlists", (req, res) => {
+router.post("/playlists", (req, res) => {
   const access_token = req.body.access_token;
   const offset = req.body.offset || 0;
   const limit = req.body.limit || 20;
@@ -195,7 +166,7 @@ app.post("/playlists", (req, res) => {
 
 //Request to get details playlist
 //TODO: Add Description, public, collaborative
-app.post("/playlist", (req, res) => {
+router.post("/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const offset = req.body.offset || 0;
@@ -235,7 +206,7 @@ app.post("/playlist", (req, res) => {
 });
 
 //Request to get tracks of a playlist
-app.post("/playlist/tracks", (req, res) => {
+router.post("/playlist/tracks", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const offset = req.body.offset || 0;
@@ -276,7 +247,7 @@ app.post("/playlist/tracks", (req, res) => {
 });
 
 //Request to create a playlist
-app.post("/add/playlist", (req, res) => {
+router.post("/add/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const user_id = req.body.user_id;
   const title = req.body.playlist_name;
@@ -321,7 +292,7 @@ app.post("/add/playlist", (req, res) => {
 
 //Request to add items to playlist
 //URI type -> https://developer.spotify.com/documentation/web-api/#spotify-uris-and-ids
-app.post("/add/playlist/items", (req, res) => {
+router.post("/add/playlist/items", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const songs = req.body.songs; //1522223672, 1174603092
@@ -361,7 +332,7 @@ app.post("/add/playlist/items", (req, res) => {
 
 //SEARCH
 //https://developers.deezer.com/api/search
-app.post("/search", (req, res) => {
+router.post("/search", (req, res) => {
   const access_token = req.body.access_token;
   const query = req.body.query; // track:'easy on me' artist:'adele'
   const type = req.body.type; //artist, album, track, playlist, radio, podcast, episode
@@ -403,7 +374,7 @@ app.post("/search", (req, res) => {
 
 //TRACKS
 //Request to get track info
-app.post("/track", (req, res) => {
+router.post("/track", (req, res) => {
   const access_token = req.body.access_token;
   const track_id = req.body.track_id;
   const offset = req.body.offset || 0;
@@ -440,6 +411,4 @@ app.post("/track", (req, res) => {
       res.send(err.message);
     });
 });
-
-console.log("Listening on 8888");
-app.listen(8888);
+module.export = router;

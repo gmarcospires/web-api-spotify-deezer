@@ -20,7 +20,7 @@
     <div class="container">
       <div id="login">
         <h1>This is an example of the Authorization Code flow</h1>
-        <a href="/login" class="btn btn-primary">Log in with Spotify</a>
+        <a href="/spotify/login" class="btn btn-primary">Log in with Spotify</a>
       </div>
       <div id="loggedin">
         <div id="user-profile">
@@ -106,7 +106,7 @@
             });
 
             $.ajax({
-                url: '/me',
+                url: '/spotify/me',
                 data: {
                  access_token
                 },
@@ -126,7 +126,7 @@
 
           document.getElementById('obtain-new-token').addEventListener('click', function() {
             $.ajax({
-              url: '/refresh_token',
+              url: '/spotify/refresh_token',
               data: {
                 'refresh_token': refresh_token,
                 'code': code
@@ -143,7 +143,7 @@
           document.getElementById('logout').addEventListener('click', function() {
             access_token = null;
             $.ajax({
-              url: '/logout'
+              url: '/spotify/logout'
             }).done( () =>{
               const url = 'https://www.spotify.com/logout/';                                                                                                                                                                                                                                                                              
               const spotifyLogoutWindow = window.open(url, 'Spotify Logout', 'width=700,height=500,top=40,left=40');                                                                                                

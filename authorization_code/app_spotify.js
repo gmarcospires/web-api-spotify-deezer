@@ -1,27 +1,10 @@
-var express = require("express"); // Express web server framework
-var cors = require("cors");
-const fetch = require("node-fetch");
-var cookieParser = require("cookie-parser");
-require("dotenv").config(); // Secret environment variables that must be set
-/**
- * Generates a random string containing numbers and letters
- * @param  {number} length The length of the string
- * @return {string} The generated string
- */
-var generateRandomString = function (length) {
-  var text = "";
-  var possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-  for (var i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-};
-
+const express = require('express');
+const router = express.Router();
+ 
+// Secret environment variables that must be set
 var client_id = process.env.CLIENT_ID;
 var client_secret = process.env.CLIENT_SECRET;
-var redirect_uri = process.env.REDIRECT_URI;
+var redirect_uri = process.env.REDIRECT_URI_SPOTIFY;
 var stateKey = "spotify_auth_state";
 //Application requests authorization
 var scope = [
@@ -46,19 +29,7 @@ var scope = [
   "user-follow-modify",
 ];
 
-var app = express();
-app
-  .use(express.static(__dirname + "/public"))
-  .use(cors())
-  .use(cookieParser())
-  .use(express.json())
-  .use(
-    express.urlencoded({
-      extended: true,
-    })
-  );
-
-app.get("/login", function (req, res) {
+router.get("/login", function (req, res) {
   let state = generateRandomString(16);
   res.cookie(stateKey, state, {
     maxAge: 24 * 60 * 60 * 1000,
@@ -75,13 +46,13 @@ app.get("/login", function (req, res) {
   res.redirect("https://accounts.spotify.com/authorize?" + params.toString());
 });
 
-app.get("/logout", (req, res) => {
+router.get("/logout", (req, res) => {
   req.session = null;
   res.clearCookie();
   res.redirect("/");
 });
 
-app.get("/callback", function (req, res) {
+router.get("/callback", function (req, res) {
   // your application requests refresh and access tokens
   // after checking the state parameter
   var code = req.query.code || null;
@@ -141,7 +112,7 @@ app.get("/callback", function (req, res) {
   }
 });
 
-app.get("/refresh_token", function (req, res) {
+router.get("/refresh_token", function (req, res) {
   // requesting access token from refresh token
   const buffer = new Buffer.from(
     client_id + ":" + client_secret,
@@ -188,7 +159,7 @@ app.get("/refresh_token", function (req, res) {
 });
 
 //Request to get the user's profile information
-app.post("/me", (req, res) => {
+router.post("/me", (req, res) => {
   const access_token = req.body.access_token;
   const authOptions = {
     headers: {
@@ -222,7 +193,7 @@ app.post("/me", (req, res) => {
 
 //PLAYLIST REQUESTS
 //Request to get playlists of the current user
-app.post("/playlists", (req, res) => {
+router.post("/playlists", (req, res) => {
   const access_token = req.body.access_token;
   const offset = req.body.offset || 0;
   const limit = req.body.limit || 20;
@@ -262,7 +233,7 @@ app.post("/playlists", (req, res) => {
 });
 
 //Request to get details playlist
-app.post("/playlist", (req, res) => {
+router.post("/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const offset = req.body.offset || 0;
@@ -307,7 +278,7 @@ app.post("/playlist", (req, res) => {
 });
 
 //Request to get tracks of a playlist
-app.post("/playlist/tracks", (req, res) => {
+router.post("/playlist/tracks", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const offset = req.body.offset || 0;
@@ -352,7 +323,7 @@ app.post("/playlist/tracks", (req, res) => {
 });
 
 //Request to create a playlist
-app.post("/add/playlist", (req, res) => {
+router.post("/add/playlist", (req, res) => {
   const access_token = req.body.access_token;
   const user_id = req.body.user_id;
   const name = req.body.playlist_name;
@@ -399,7 +370,7 @@ app.post("/add/playlist", (req, res) => {
 
 //Request to add items to playlist
 //URI type -> https://developer.spotify.com/documentation/web-api/#spotify-uris-and-ids
-app.post("/add/playlist/items", (req, res) => {
+router.post("/add/playlist/items", (req, res) => {
   const access_token = req.body.access_token;
   const playlist_id = req.body.playlist_id;
   const uris = req.body.uris;
@@ -440,7 +411,7 @@ app.post("/add/playlist/items", (req, res) => {
 
 //Search
 //"track: easy on me artist:adele isrc:USSM12105970"
-app.post("/search", (req, res) => {
+router.post("/search", (req, res) => {
   const access_token = req.body.access_token;
   const query = req.body.query;
   const type = req.body.type;
@@ -484,5 +455,4 @@ app.post("/search", (req, res) => {
     });
 });
 
-console.log("Listening on 8888");
-app.listen(8888);
+module.exports = router;
