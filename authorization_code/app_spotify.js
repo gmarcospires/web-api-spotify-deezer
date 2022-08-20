@@ -1,5 +1,7 @@
 const express = require("express");
 const router = express.Router();
+const func = require("./func");
+var fetch = require("node-fetch");
 
 // Secret environment variables that must be set
 var client_id = process.env.CLIENT_ID;
@@ -30,7 +32,7 @@ var scope = [
 ];
 
 router.get("/login", function (req, res) {
-  let state = generateRandomString(16);
+  let state = func.generateRandomString(16);
   res.cookie(stateKey, state, {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,

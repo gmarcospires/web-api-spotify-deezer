@@ -1,5 +1,7 @@
 const express = require("express");
-const router = express.Router(); // Secret environment variables that must be set
+const router = express.Router();
+const func = require("./func");
+var fetch = require("node-fetch");
 
 var app_id = process.env.APP_ID;
 var secret = process.env.SECRET;
@@ -15,7 +17,7 @@ var permissions = [
 var stateKey = "deezer_auth_state";
 
 router.get("/login", function (req, res) {
-  var state = generateRandomString(16);
+  var state = func.generateRandomString(16);
   res.cookie(stateKey, state, {
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
@@ -411,4 +413,5 @@ router.post("/track", (req, res) => {
       res.send(err.message);
     });
 });
-module.export = router;
+
+module.exports = router;
