@@ -1,6 +1,6 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
- 
+
 // Secret environment variables that must be set
 var client_id = process.env.CLIENT_ID;
 var client_secret = process.env.CLIENT_SECRET;

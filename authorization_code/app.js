@@ -1,4 +1,4 @@
-var express = require('express');
+var express = require("express");
 var cors = require("cors");
 const fetch = require("node-fetch");
 var cookieParser = require("cookie-parser");
@@ -15,8 +15,8 @@ app
       extended: true,
     })
   );
-  
-  /**
+
+/**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
  * @return {string} The generated string
@@ -32,7 +32,7 @@ var generateRandomString = function (length) {
   return text;
 };
 
-app.use('/spotify', require('./app_spotify'));
+app.use("/spotify", require("./app_spotify"));
 // app.use('/deezer', require('./app_deezer'));
 
 console.log("Listening on 8888");
