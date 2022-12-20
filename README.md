@@ -1,5 +1,5 @@
 # web-api-spotify-deezer
-This is a basic API to request data from Spotify and Deezer.
+This is a basic API to request data from Spotify and Deezer in some endpoits.
 
 * Work in progress.
 
@@ -9,6 +9,10 @@ This is a basic API to request data from Spotify and Deezer.
     Create .env file with information on your developer app in Spotify and Deezer 
     $ yarn start  
     Then open `http://localhost:8888` in a browser.
+    
+    /spotify/... to request a Spotify API
+    /deezer/... to request a Deezer API
+    
 
 ## Reference Links
 * https://developer.spotify.com/documentation/web-api/reference/#/  
